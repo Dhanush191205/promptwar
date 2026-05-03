@@ -1,11 +1,74 @@
-// ===== SECURITY: IIFE to avoid global scope pollution =====
+/**
+ * @fileoverview Election Explorer — Application Logic
+ * @description Core application module handling UI rendering, user interactions,
+ * quiz mechanics, and analytics integration. Uses safe DOM APIs exclusively
+ * (no innerHTML) to prevent XSS. Wrapped in an IIFE for scope isolation.
+ * @module app
+ * @version 2.0.0
+ * @license MIT
+ * @author Dhanush191205
+ */
+
 'use strict';
+
+/* global DATA, COMPARE_DATA, TYPES_DATA, QUIZ_DATA, trackEvent, saveQuizResult */
+
 (function () {
-  // ===== HELPER: Safe text element creation =====
+  // ──────────────────────────────────────────────────────────
+  // Constants
+  // ──────────────────────────────────────────────────────────
+
+  /** @const {number} PARTICLE_COUNT - Number of background particles */
+  var PARTICLE_COUNT = 20;
+
+  /** @const {number} SCROLL_THRESHOLD - Pixels before navbar style changes */
+  var SCROLL_THRESHOLD = 50;
+
+  /** @const {number} NAV_OFFSET - Pixel offset for active nav calculation */
+  var NAV_OFFSET = 150;
+
+  /** @const {number} COUNTER_SPEED - Milliseconds between counter increments */
+  var COUNTER_SPEED = 40;
+
+  /** @const {number} COUNTER_STEPS - Number of increments for stat counters */
+  var COUNTER_STEPS = 30;
+
+  /** @const {number} SCROLL_ANIM_THRESHOLD - IntersectionObserver threshold */
+  var SCROLL_ANIM_THRESHOLD = 0.1;
+
+  /** @const {string[]} ALLOWED_COUNTRIES - Whitelisted country keys */
+  var ALLOWED_COUNTRIES = ['india', 'usa', 'uk'];
+
+  /** @const {string[]} SECTION_IDS - All navigable section identifiers */
+  var SECTION_IDS = ['hero', 'overview', 'steps', 'flow', 'timeline', 'roles', 'compare', 'quiz'];
+
+  /** @const {string[]} TIMELINE_COLORS - Color palette for timeline bars */
+  var TIMELINE_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#06b6d4', '#22d3ee'];
+
+  /** @const {number[]} TIMELINE_WIDTHS - Flex widths for timeline bars */
+  var TIMELINE_WIDTHS = [15, 30, 20, 15, 20];
+
+  /** @const {string} ANIMATABLE_SELECTOR - CSS selector for scroll-animated elements */
+  var ANIMATABLE_SELECTOR = '.overview-card,.step-card,.role-card,.type-card,.summary-card,.flow-node,.did-you-know';
+
+  // ──────────────────────────────────────────────────────────
+  // DOM Utilities
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Creates a DOM element with attributes and optional text content.
+   * Uses safe APIs only — never sets innerHTML.
+   * @param {string} tag - HTML tag name
+   * @param {Object} [attrs] - Attribute key-value pairs
+   * @param {string} [textContent] - Text content for the element
+   * @returns {HTMLElement} The created element
+   */
   function createEl(tag, attrs, textContent) {
-    const el = document.createElement(tag);
+    var el = document.createElement(tag);
     if (attrs) {
-      for (const [key, value] of Object.entries(attrs)) {
+      for (var key in attrs) {
+        if (!Object.prototype.hasOwnProperty.call(attrs, key)) continue;
+        var value = attrs[key];
         if (key === 'className') el.className = value;
         else if (key === 'style' && typeof value === 'object') Object.assign(el.style, value);
         else if (key.startsWith('data-')) el.setAttribute(key, value);
@@ -16,49 +79,95 @@
     return el;
   }
 
+  /**
+   * Removes all child nodes from an element safely.
+   * @param {HTMLElement} el - Parent element to clear
+   */
   function clearChildren(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
   }
 
-  // Allowed country keys — whitelist for input validation
-  const ALLOWED_COUNTRIES = ['india', 'usa', 'uk'];
-
-  function sanitizeCountry(value) {
-    if (ALLOWED_COUNTRIES.includes(value)) return value;
-    return 'india'; // safe default
+  /**
+   * Safely retrieves a DOM element by ID with null check.
+   * @param {string} id - Element ID
+   * @returns {HTMLElement|null}
+   */
+  function getEl(id) {
+    return document.getElementById(id);
   }
 
-  // ===== APP STATE =====
-  let currentCountry = 'india';
-  let currentStep = 0;
-  let quizIndex = 0;
-  let quizScore = 0;
-  let quizAnswered = false;
+  // ──────────────────────────────────────────────────────────
+  // Input Validation
+  // ──────────────────────────────────────────────────────────
 
-  // Abort controllers for manageable event cleanup
-  let stepDetailAbort = null;
-  let quizNextAbort = null;
-  let quizRestartAbort = null;
+  /**
+   * Validates and sanitizes a country key against the whitelist.
+   * @param {string} value - Country key to validate
+   * @returns {string} Validated country key or 'india' as safe default
+   */
+  function sanitizeCountry(value) {
+    return ALLOWED_COUNTRIES.indexOf(value) !== -1 ? value : 'india';
+  }
 
-  // ===== INIT =====
-  document.addEventListener('DOMContentLoaded', () => {
-    createParticles();
-    initNavbar();
-    initCountrySelector();
-    initScrollAnimations();
-    initStatCounters();
-    renderAll();
-    initQuiz();
+  // ──────────────────────────────────────────────────────────
+  // Application State
+  // ──────────────────────────────────────────────────────────
+
+  /** @type {string} Currently selected country */
+  var currentCountry = 'india';
+  /** @type {number} Currently selected step index */
+  var currentStep = 0;
+  /** @type {number} Current quiz question index */
+  var quizIndex = 0;
+  /** @type {number} Quiz correct answers count */
+  var quizScore = 0;
+  /** @type {boolean} Whether current quiz question has been answered */
+  var quizAnswered = false;
+
+  /** @type {AbortController|null} Controller for step detail button listeners */
+  var stepDetailAbort = null;
+  /** @type {AbortController|null} Controller for quiz next button listener */
+  var quizNextAbort = null;
+  /** @type {AbortController|null} Controller for quiz restart button listener */
+  var quizRestartAbort = null;
+
+  // ──────────────────────────────────────────────────────────
+  // Initialization
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Main entry point. Initializes all modules on DOM ready.
+   */
+  document.addEventListener('DOMContentLoaded', function () {
+    try {
+      createParticles();
+      initNavbar();
+      initCountrySelector();
+      initScrollAnimations();
+      initStatCounters();
+      renderAll();
+      initQuiz();
+      trackEvent('app_loaded', { version: '2.0.0' });
+    } catch (err) {
+      console.error('[App] Initialization error:', err);
+    }
   });
 
-  // ===== PARTICLES =====
+  // ──────────────────────────────────────────────────────────
+  // Background Particles
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Creates floating particle elements for the background animation.
+   * Particles have randomized size, position, and animation timing.
+   */
   function createParticles() {
-    const container = document.getElementById('bgParticles');
+    var container = getEl('bgParticles');
     if (!container) return;
-    for (let i = 0; i < 20; i++) {
-      const p = document.createElement('div');
+    for (var i = 0; i < PARTICLE_COUNT; i++) {
+      var p = document.createElement('div');
       p.className = 'particle';
-      const size = Math.random() * 6 + 3;
+      var size = Math.random() * 6 + 3;
       p.style.width = size + 'px';
       p.style.height = size + 'px';
       p.style.left = (Math.random() * 100) + '%';
@@ -69,144 +178,206 @@
     }
   }
 
-  // ===== NAVBAR =====
+  // ──────────────────────────────────────────────────────────
+  // Navigation
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Initializes navbar scroll behavior, hamburger menu toggle,
+   * and nav link click handlers.
+   */
   function initNavbar() {
-    const navbar = document.getElementById('navbar');
-    const hamburger = document.getElementById('hamburger');
-    const navLinks = document.getElementById('navLinks');
+    var navbar = getEl('navbar');
+    var hamburger = getEl('hamburger');
+    var navLinks = getEl('navLinks');
     if (!navbar || !hamburger || !navLinks) return;
 
-    window.addEventListener('scroll', () => {
-      navbar.classList.toggle('scrolled', window.scrollY > 50);
+    window.addEventListener('scroll', function () {
+      navbar.classList.toggle('scrolled', window.scrollY > SCROLL_THRESHOLD);
       updateActiveNav();
     });
 
-    hamburger.addEventListener('click', () => navLinks.classList.toggle('open'));
-    navLinks.querySelectorAll('.nav-link').forEach(link => {
-      link.addEventListener('click', () => navLinks.classList.remove('open'));
+    hamburger.addEventListener('click', function () {
+      navLinks.classList.toggle('open');
+    });
+
+    navLinks.querySelectorAll('.nav-link').forEach(function (link) {
+      link.addEventListener('click', function () {
+        navLinks.classList.remove('open');
+      });
     });
   }
 
+  /**
+   * Updates the active navigation link based on scroll position.
+   * Highlights the nav link corresponding to the visible section.
+   */
   function updateActiveNav() {
-    const sections = ['hero', 'overview', 'steps', 'flow', 'timeline', 'roles', 'compare', 'quiz'];
-    const scrollPos = window.scrollY + 150;
-    sections.forEach(id => {
-      const el = document.getElementById(id);
+    var scrollPos = window.scrollY + NAV_OFFSET;
+    SECTION_IDS.forEach(function (id) {
+      var el = getEl(id);
       if (!el) return;
-      const link = document.querySelector('.nav-link[data-section="' + id + '"]');
+      var link = document.querySelector('.nav-link[data-section="' + id + '"]');
       if (!link) return;
       if (el.offsetTop <= scrollPos && el.offsetTop + el.offsetHeight > scrollPos) {
-        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(function (l) {
+          l.classList.remove('active');
+        });
         link.classList.add('active');
       }
     });
   }
 
-  // ===== COUNTRY SELECTOR =====
+  // ──────────────────────────────────────────────────────────
+  // Country Selector
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Initializes the country selector dropdown with change tracking.
+   * Validates input against whitelist before updating state.
+   */
   function initCountrySelector() {
-    const selector = document.getElementById('countrySelector');
+    var selector = getEl('countrySelector');
     if (!selector) return;
-    selector.addEventListener('change', (e) => {
-      currentCountry = sanitizeCountry(e.target.value);
+    selector.addEventListener('change', function (e) {
+      var newCountry = sanitizeCountry(e.target.value);
+      currentCountry = newCountry;
       currentStep = 0;
       renderAll();
+      trackEvent('country_changed', { country: newCountry });
     });
   }
 
-  // ===== SCROLL ANIMATIONS =====
+  // ──────────────────────────────────────────────────────────
+  // Scroll Animations
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Sets up IntersectionObserver for scroll-triggered animations.
+   * Elements matching ANIMATABLE_SELECTOR get a fade-in effect.
+   */
   function initScrollAnimations() {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
-    }, { threshold: 0.1 });
-    document.querySelectorAll('.overview-card,.step-card,.role-card,.type-card,.summary-card,.flow-node,.did-you-know').forEach(el => {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) e.target.classList.add('visible');
+      });
+    }, { threshold: SCROLL_ANIM_THRESHOLD });
+
+    document.querySelectorAll(ANIMATABLE_SELECTOR).forEach(function (el) {
       el.classList.add('animate-in');
       observer.observe(el);
     });
   }
 
-  // ===== STAT COUNTERS =====
+  // ──────────────────────────────────────────────────────────
+  // Stat Counters
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Initializes animated number counters in the hero section.
+   * Counts up from 0 to the data-target value when visible.
+   */
   function initStatCounters() {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
         if (entry.isIntersecting) {
-          document.querySelectorAll('.stat-number').forEach(el => {
-            const target = parseInt(el.dataset.target, 10);
+          document.querySelectorAll('.stat-number').forEach(function (el) {
+            var target = parseInt(el.dataset.target, 10);
             if (isNaN(target) || target < 0) return;
-            let current = 0;
-            const step = Math.ceil(target / 30);
-            const timer = setInterval(() => {
+            var current = 0;
+            var step = Math.ceil(target / COUNTER_STEPS);
+            var timer = setInterval(function () {
               current += step;
               if (current >= target) { current = target; clearInterval(timer); }
               el.textContent = current;
-            }, 40);
+            }, COUNTER_SPEED);
           });
           observer.unobserve(entry.target);
         }
       });
     }, { threshold: 0.5 });
-    const statsEl = document.querySelector('.hero-stats');
+
+    var statsEl = document.querySelector('.hero-stats');
     if (statsEl) observer.observe(statsEl);
   }
 
-  // ===== RENDER ALL =====
+  // ──────────────────────────────────────────────────────────
+  // Master Render
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Re-renders all dynamic sections based on current country.
+   * Called on init and whenever the country selector changes.
+   */
   function renderAll() {
-    const d = DATA[currentCountry];
+    var d = DATA[currentCountry];
     if (!d) return;
-    renderOverview(d);
-    renderSteps(d);
-    renderStepDetail(d);
-    renderFlowchart(d);
-    renderTimeline(d);
-    renderRoles(d);
-    renderCompare();
-    renderTypes();
-    // Re-init scroll animations for new elements
-    setTimeout(() => initScrollAnimations(), 100);
+
+    try {
+      renderOverview(d);
+      renderSteps(d);
+      renderStepDetail(d);
+      renderFlowchart(d);
+      renderTimeline(d);
+      renderRoles(d);
+      renderCompare();
+      renderTypes();
+      setTimeout(function () { initScrollAnimations(); }, 100);
+    } catch (err) {
+      console.error('[App] Render error:', err);
+    }
   }
 
-  // ===== OVERVIEW =====
+  // ──────────────────────────────────────────────────────────
+  // Overview Section
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders overview card text and "Did You Know" fact.
+   * @param {Object} d - Country data object
+   */
   function renderOverview(d) {
     if (!d.overview) return;
-    d.overview.forEach((text, i) => {
-      const el = document.getElementById('overviewText' + (i + 1));
+    d.overview.forEach(function (text, i) {
+      var el = getEl('overviewText' + (i + 1));
       if (el) el.textContent = text;
     });
-    const dykEl = document.getElementById('dykText');
+    var dykEl = getEl('dykText');
     if (dykEl) dykEl.textContent = d.dyk;
   }
 
-  // ===== STEPS =====
+  // ──────────────────────────────────────────────────────────
+  // Steps Section
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the step navigator cards and progress track.
+   * @param {Object} d - Country data object
+   */
   function renderSteps(d) {
-    const nav = document.getElementById('stepNavigator');
-    const progSteps = document.getElementById('progressSteps');
+    var nav = getEl('stepNavigator');
+    var progSteps = getEl('progressSteps');
     if (!nav || !progSteps) return;
     clearChildren(nav);
     clearChildren(progSteps);
 
-    d.steps.forEach((step, i) => {
-      // Step card — built with safe DOM APIs
-      const card = createEl('div', { className: 'step-card' + (i === currentStep ? ' active' : '') });
-
-      const iconDiv = createEl('div', { className: 'step-card-icon' }, step.icon);
-      const numDiv = createEl('div', { className: 'step-card-num' }, 'Step ' + (i + 1));
-      const titleDiv = createEl('div', { className: 'step-card-title' }, step.title);
-
-      card.appendChild(iconDiv);
-      card.appendChild(numDiv);
-      card.appendChild(titleDiv);
-
-      card.addEventListener('click', () => {
+    d.steps.forEach(function (step, i) {
+      var card = createEl('div', { className: 'step-card' + (i === currentStep ? ' active' : '') });
+      card.appendChild(createEl('div', { className: 'step-card-icon' }, step.icon));
+      card.appendChild(createEl('div', { className: 'step-card-num' }, 'Step ' + (i + 1)));
+      card.appendChild(createEl('div', { className: 'step-card-title' }, step.title));
+      card.addEventListener('click', function () {
         currentStep = i;
         renderSteps(d);
         renderStepDetail(d);
+        trackEvent('step_clicked', { step_name: step.title, step_index: i });
       });
       nav.appendChild(card);
 
-      // Progress dot
-      const dot = createEl('div', {
+      var dot = createEl('div', {
         className: 'progress-dot' + (i <= currentStep ? ' active' : '') + (i < currentStep ? ' completed' : '')
       });
-      dot.addEventListener('click', () => {
+      dot.addEventListener('click', function () {
         currentStep = i;
         renderSteps(d);
         renderStepDetail(d);
@@ -214,23 +385,28 @@
       progSteps.appendChild(dot);
     });
 
-    const progressFill = document.getElementById('progressFill');
+    var progressFill = getEl('progressFill');
     if (progressFill) {
       progressFill.style.width = ((currentStep / (d.steps.length - 1)) * 100) + '%';
     }
   }
 
+  /**
+   * Renders the detail panel for the currently selected step.
+   * Uses AbortController to prevent event listener accumulation.
+   * @param {Object} d - Country data object
+   */
   function renderStepDetail(d) {
-    const step = d.steps[currentStep];
+    var step = d.steps[currentStep];
     if (!step) return;
 
-    const iconEl = document.getElementById('stepDetailIcon');
-    const titleEl = document.getElementById('stepDetailTitle');
-    const badgeEl = document.getElementById('stepDetailBadge');
-    const descEl = document.getElementById('stepDetailDesc');
-    const pointsEl = document.getElementById('stepDetailPoints');
-    const prevBtn = document.getElementById('btnPrevStep');
-    const nextBtn = document.getElementById('btnNextStep');
+    var iconEl = getEl('stepDetailIcon');
+    var titleEl = getEl('stepDetailTitle');
+    var badgeEl = getEl('stepDetailBadge');
+    var descEl = getEl('stepDetailDesc');
+    var pointsEl = getEl('stepDetailPoints');
+    var prevBtn = getEl('btnPrevStep');
+    var nextBtn = getEl('btnNextStep');
 
     if (iconEl) iconEl.textContent = step.icon;
     if (titleEl) titleEl.textContent = step.title;
@@ -239,140 +415,161 @@
 
     if (pointsEl) {
       clearChildren(pointsEl);
-      step.points.forEach(p => {
-        const pointDiv = createEl('div', { className: 'step-point' }, p);
-        pointsEl.appendChild(pointDiv);
+      step.points.forEach(function (p) {
+        pointsEl.appendChild(createEl('div', { className: 'step-point' }, p));
       });
     }
 
-    // Cleanup previous event listeners to prevent accumulation
     if (stepDetailAbort) stepDetailAbort.abort();
     stepDetailAbort = new AbortController();
 
     if (prevBtn) {
       prevBtn.disabled = currentStep === 0;
-      prevBtn.addEventListener('click', () => {
+      prevBtn.addEventListener('click', function () {
         if (currentStep > 0) { currentStep--; renderSteps(d); renderStepDetail(d); }
       }, { signal: stepDetailAbort.signal });
     }
     if (nextBtn) {
       nextBtn.disabled = currentStep === d.steps.length - 1;
-      nextBtn.addEventListener('click', () => {
+      nextBtn.addEventListener('click', function () {
         if (currentStep < d.steps.length - 1) { currentStep++; renderSteps(d); renderStepDetail(d); }
       }, { signal: stepDetailAbort.signal });
     }
   }
 
-  // ===== FLOWCHART =====
+  // ──────────────────────────────────────────────────────────
+  // Flowchart
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the visual flowchart showing step connections.
+   * @param {Object} d - Country data object
+   */
   function renderFlowchart(d) {
-    const el = document.getElementById('flowchart');
+    var el = getEl('flowchart');
     if (!el) return;
     clearChildren(el);
 
-    d.steps.forEach((step, i) => {
-      const node = createEl('div', { className: 'flow-node' });
-      const nodeIcon = createEl('div', { className: 'flow-node-icon' }, step.icon);
-      const nodeTitle = createEl('div', { className: 'flow-node-title' }, step.title);
-      node.appendChild(nodeIcon);
-      node.appendChild(nodeTitle);
+    d.steps.forEach(function (step, i) {
+      var node = createEl('div', { className: 'flow-node' });
+      node.appendChild(createEl('div', { className: 'flow-node-icon' }, step.icon));
+      node.appendChild(createEl('div', { className: 'flow-node-title' }, step.title));
       el.appendChild(node);
-
       if (i < d.steps.length - 1) {
-        const arrow = createEl('div', { className: 'flow-arrow' }, '\u2192');
-        el.appendChild(arrow);
+        el.appendChild(createEl('div', { className: 'flow-arrow' }, '\u2192'));
       }
     });
   }
 
-  // ===== TIMELINE =====
+  // ──────────────────────────────────────────────────────────
+  // Timeline
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the interactive timeline with slider control.
+   * @param {Object} d - Country data object
+   */
   function renderTimeline(d) {
-    const slider = document.getElementById('timelineSlider');
-    const labels = document.getElementById('timelineLabels');
+    var slider = getEl('timelineSlider');
+    var labels = getEl('timelineLabels');
     if (!slider || !labels) return;
 
     slider.max = d.timeline.length - 1;
     slider.value = 0;
-
     clearChildren(labels);
-    d.timeline.forEach((t, i) => {
-      const labelText = t.title.split(' ').slice(0, 2).join(' ');
-      const span = createEl('span', { className: 'timeline-label' + (i === 0 ? ' active' : '') }, labelText);
-      labels.appendChild(span);
+
+    d.timeline.forEach(function (t, i) {
+      var labelText = t.title.split(' ').slice(0, 2).join(' ');
+      labels.appendChild(createEl('span', { className: 'timeline-label' + (i === 0 ? ' active' : '') }, labelText));
     });
 
     updateTimelineCard(d, 0);
     renderTimelineBars(d, 0);
 
-    slider.oninput = () => {
-      const val = parseInt(slider.value, 10);
+    slider.oninput = function () {
+      var val = parseInt(slider.value, 10);
       if (isNaN(val) || val < 0 || val >= d.timeline.length) return;
       updateTimelineCard(d, val);
       renderTimelineBars(d, val);
-      labels.querySelectorAll('.timeline-label').forEach((l, i) => l.classList.toggle('active', i === val));
+      labels.querySelectorAll('.timeline-label').forEach(function (l, i) {
+        l.classList.toggle('active', i === val);
+      });
     };
   }
 
+  /**
+   * Updates the timeline detail card for a given phase index.
+   * @param {Object} d - Country data object
+   * @param {number} index - Timeline phase index
+   */
   function updateTimelineCard(d, index) {
-    const t = d.timeline[index];
+    var t = d.timeline[index];
     if (!t) return;
-    const card = document.getElementById('timelineCard');
+    var card = getEl('timelineCard');
     if (!card) return;
     clearChildren(card);
-
-    const h3 = createEl('h3', {}, t.title);
-    const daysDiv = createEl('div', { className: 'tl-days' }, '\uD83D\uDCC5 ' + t.days);
-    const p = createEl('p', {}, t.desc);
-
-    card.appendChild(h3);
-    card.appendChild(daysDiv);
-    card.appendChild(p);
+    card.appendChild(createEl('h3', {}, t.title));
+    card.appendChild(createEl('div', { className: 'tl-days' }, '\uD83D\uDCC5 ' + t.days));
+    card.appendChild(createEl('p', {}, t.desc));
   }
 
+  /**
+   * Renders the colored timeline progress bars.
+   * @param {Object} d - Country data object
+   * @param {number} activeIndex - Currently active phase index
+   */
   function renderTimelineBars(d, activeIndex) {
-    const el = document.getElementById('timelineVisual');
+    var el = getEl('timelineVisual');
     if (!el) return;
     clearChildren(el);
 
-    const colors = ['#6366f1', '#8b5cf6', '#a78bfa', '#06b6d4', '#22d3ee'];
-    const widths = [15, 30, 20, 15, 20];
-
-    d.timeline.forEach((_, i) => {
-      const bar = createEl('div', { className: 'tl-bar' });
-      bar.style.flex = widths[i];
-      bar.style.background = colors[i];
+    d.timeline.forEach(function (_, i) {
+      var bar = createEl('div', { className: 'tl-bar' });
+      bar.style.flex = TIMELINE_WIDTHS[i];
+      bar.style.background = TIMELINE_COLORS[i];
       bar.style.opacity = i === activeIndex ? '1' : '0.35';
       el.appendChild(bar);
     });
   }
 
-  // ===== ROLES =====
+  // ──────────────────────────────────────────────────────────
+  // Roles
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the key roles grid cards.
+   * @param {Object} d - Country data object
+   */
   function renderRoles(d) {
-    const grid = document.getElementById('rolesGrid');
+    var grid = getEl('rolesGrid');
     if (!grid) return;
     clearChildren(grid);
 
-    d.roles.forEach(r => {
-      const card = createEl('div', { className: 'role-card' });
-      const icon = createEl('div', { className: 'role-icon' }, r.icon);
-      const h3 = createEl('h3', {}, r.title);
-      const p = createEl('p', {}, r.desc);
-      card.appendChild(icon);
-      card.appendChild(h3);
-      card.appendChild(p);
+    d.roles.forEach(function (r) {
+      var card = createEl('div', { className: 'role-card' });
+      card.appendChild(createEl('div', { className: 'role-icon' }, r.icon));
+      card.appendChild(createEl('h3', {}, r.title));
+      card.appendChild(createEl('p', {}, r.desc));
       grid.appendChild(card);
     });
   }
 
-  // ===== COMPARE =====
+  // ──────────────────────────────────────────────────────────
+  // Compare Table
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the comparison table body from COMPARE_DATA.
+   */
   function renderCompare() {
-    const tbody = document.querySelector('#compareTable tbody');
+    var tbody = document.querySelector('#compareTable tbody');
     if (!tbody) return;
     clearChildren(tbody);
 
-    COMPARE_DATA.forEach(row => {
-      const tr = document.createElement('tr');
-      row.forEach((cell, i) => {
-        const td = document.createElement('td');
+    COMPARE_DATA.forEach(function (row) {
+      var tr = document.createElement('tr');
+      row.forEach(function (cell, i) {
+        var td = document.createElement('td');
         td.textContent = cell;
         if (i === 0) {
           td.style.fontWeight = '600';
@@ -384,57 +581,71 @@
     });
   }
 
-  // ===== TYPES =====
+  // ──────────────────────────────────────────────────────────
+  // Election Types
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Renders the election types grid cards from TYPES_DATA.
+   */
   function renderTypes() {
-    const grid = document.getElementById('typesGrid');
+    var grid = getEl('typesGrid');
     if (!grid) return;
     clearChildren(grid);
 
-    TYPES_DATA.forEach(t => {
-      const card = createEl('div', { className: 'type-card' });
-      const h3 = createEl('h3', {}, t.icon + ' ' + t.title);
-      const p = createEl('p', {}, t.desc);
-      card.appendChild(h3);
-      card.appendChild(p);
+    TYPES_DATA.forEach(function (t) {
+      var card = createEl('div', { className: 'type-card' });
+      card.appendChild(createEl('h3', {}, t.icon + ' ' + t.title));
+      card.appendChild(createEl('p', {}, t.desc));
       grid.appendChild(card);
     });
   }
 
-  // ===== QUIZ =====
+  // ──────────────────────────────────────────────────────────
+  // Quiz Engine
+  // ──────────────────────────────────────────────────────────
+
+  /**
+   * Initializes or resets the quiz to question 1.
+   * Cleans up previous event listeners via AbortController.
+   */
   function initQuiz() {
     quizIndex = 0;
     quizScore = 0;
     quizAnswered = false;
 
-    const container = document.getElementById('quizContainer');
-    const result = document.getElementById('quizResult');
+    var container = getEl('quizContainer');
+    var result = getEl('quizResult');
     if (container) container.style.display = '';
     if (result) result.style.display = 'none';
 
     renderQuizQuestion();
 
-    // Cleanup previous listeners to prevent accumulation on restart
     if (quizNextAbort) quizNextAbort.abort();
     if (quizRestartAbort) quizRestartAbort.abort();
     quizNextAbort = new AbortController();
     quizRestartAbort = new AbortController();
 
-    const nextBtn = document.getElementById('btnQuizNext');
-    const restartBtn = document.getElementById('btnRestartQuiz');
+    var nextBtn = getEl('btnQuizNext');
+    var restartBtn = getEl('btnRestartQuiz');
     if (nextBtn) nextBtn.addEventListener('click', nextQuizQuestion, { signal: quizNextAbort.signal });
     if (restartBtn) restartBtn.addEventListener('click', initQuiz, { signal: quizRestartAbort.signal });
   }
 
+  /**
+   * Renders the current quiz question and its answer options.
+   * Resets feedback and disables the Next button until answered.
+   */
   function renderQuizQuestion() {
     if (quizIndex < 0 || quizIndex >= QUIZ_DATA.length) return;
-    const q = QUIZ_DATA[quizIndex];
+    var q = QUIZ_DATA[quizIndex];
 
-    const progressText = document.getElementById('quizProgressText');
-    const progressFill = document.getElementById('quizProgressFill');
-    const questionEl = document.getElementById('quizQuestion');
-    const optsEl = document.getElementById('quizOptions');
-    const fb = document.getElementById('quizFeedback');
-    const nextBtn = document.getElementById('btnQuizNext');
+    var progressText = getEl('quizProgressText');
+    var progressFill = getEl('quizProgressFill');
+    var questionEl = getEl('quizQuestion');
+    var optsEl = getEl('quizOptions');
+    var fb = getEl('quizFeedback');
+    var nextBtn = getEl('btnQuizNext');
 
     if (progressText) progressText.textContent = 'Question ' + (quizIndex + 1) + ' of ' + QUIZ_DATA.length;
     if (progressFill) progressFill.style.width = ((quizIndex / QUIZ_DATA.length) * 100) + '%';
@@ -442,50 +653,61 @@
 
     if (optsEl) {
       clearChildren(optsEl);
-      q.opts.forEach((opt, i) => {
-        const btn = createEl('button', { className: 'quiz-option', 'data-index': String(i) }, opt);
-        btn.addEventListener('click', () => handleQuizAnswer(i));
+      q.opts.forEach(function (opt, i) {
+        var btn = createEl('button', { className: 'quiz-option', 'data-index': String(i) }, opt);
+        btn.addEventListener('click', function () { handleQuizAnswer(i); });
         optsEl.appendChild(btn);
       });
     }
 
-    if (fb) {
-      fb.className = 'quiz-feedback';
-      fb.textContent = '';
-    }
-
+    if (fb) { fb.className = 'quiz-feedback'; fb.textContent = ''; }
     if (nextBtn) nextBtn.disabled = true;
     quizAnswered = false;
   }
 
+  /**
+   * Handles a quiz answer selection. Validates input, updates UI,
+   * and tracks the event in Google Analytics.
+   * @param {number} selected - Index of the selected answer (0-3)
+   */
   function handleQuizAnswer(selected) {
     if (quizAnswered) return;
     if (selected < 0 || selected >= QUIZ_DATA[quizIndex].opts.length) return;
     quizAnswered = true;
-    const q = QUIZ_DATA[quizIndex];
-    const correct = selected === q.ans;
+
+    var q = QUIZ_DATA[quizIndex];
+    var correct = selected === q.ans;
     if (correct) quizScore++;
 
-    const btns = document.querySelectorAll('.quiz-option');
-    btns.forEach((btn, i) => {
+    var btns = document.querySelectorAll('.quiz-option');
+    btns.forEach(function (btn, i) {
       if (i === q.ans) btn.classList.add('correct');
       if (i === selected && !correct) btn.classList.add('wrong');
       btn.style.pointerEvents = 'none';
     });
 
-    const fb = document.getElementById('quizFeedback');
+    var fb = getEl('quizFeedback');
     if (fb) {
       fb.className = 'quiz-feedback show ' + (correct ? 'correct' : 'wrong');
       fb.textContent = (correct ? '\u2705 Correct! ' : '\u274C Incorrect. ') + q.explain;
     }
 
-    const nextBtn = document.getElementById('btnQuizNext');
+    var nextBtn = getEl('btnQuizNext');
     if (nextBtn) {
       nextBtn.disabled = false;
       nextBtn.textContent = quizIndex === QUIZ_DATA.length - 1 ? 'See Results \uD83C\uDF89' : 'Next Question \u2192';
     }
+
+    trackEvent('quiz_answer', {
+      question_index: quizIndex,
+      is_correct: correct,
+      selected_option: selected
+    });
   }
 
+  /**
+   * Advances to the next quiz question or shows results.
+   */
   function nextQuizQuestion() {
     quizIndex++;
     if (quizIndex >= QUIZ_DATA.length) {
@@ -495,14 +717,19 @@
     }
   }
 
+  /**
+   * Displays quiz results with score, feedback message, and saves
+   * the result to Firebase Firestore for the leaderboard.
+   */
   function showQuizResults() {
-    const container = document.getElementById('quizContainer');
+    var container = getEl('quizContainer');
     if (container) container.style.display = 'none';
-    const resultEl = document.getElementById('quizResult');
+    var resultEl = getEl('quizResult');
     if (resultEl) resultEl.style.display = '';
 
-    const pct = Math.round((quizScore / QUIZ_DATA.length) * 100);
-    let icon, title, text;
+    var pct = Math.round((quizScore / QUIZ_DATA.length) * 100);
+    var icon, title, text;
+
     if (pct >= 80) {
       icon = '\uD83C\uDFC6'; title = 'Outstanding!';
       text = 'You\'re an election expert! Democracy is safe with you.';
@@ -514,14 +741,18 @@
       text = 'Elections are complex \u2014 review the process above and try again!';
     }
 
-    const iconEl = document.getElementById('resultIcon');
-    const titleEl = document.getElementById('resultTitle');
-    const textEl = document.getElementById('resultText');
-    const scoreEl = document.getElementById('resultScore');
+    var iconEl = getEl('resultIcon');
+    var titleEl = getEl('resultTitle');
+    var textEl = getEl('resultText');
+    var scoreEl = getEl('resultScore');
 
     if (iconEl) iconEl.textContent = icon;
     if (titleEl) titleEl.textContent = title;
     if (textEl) textEl.textContent = text;
     if (scoreEl) scoreEl.textContent = quizScore + ' / ' + QUIZ_DATA.length;
+
+    trackEvent('quiz_completed', { score: quizScore, total: QUIZ_DATA.length, percentage: pct });
+    saveQuizResult(quizScore, QUIZ_DATA.length, currentCountry);
   }
+
 })();

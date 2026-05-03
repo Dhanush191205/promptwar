@@ -13,9 +13,11 @@ COPY index.html /usr/share/nginx/html/
 COPY style.css /usr/share/nginx/html/
 COPY app.js /usr/share/nginx/html/
 COPY data.js /usr/share/nginx/html/
+COPY firebase-config.js /usr/share/nginx/html/
+COPY tests.js /usr/share/nginx/html/
+COPY tests.html /usr/share/nginx/html/
 
 # Cloud Run uses PORT env variable (default 8080)
-# nginx.conf is configured to listen on $PORT
 EXPOSE 8080
 
 # Start nginx in foreground (required for containers)

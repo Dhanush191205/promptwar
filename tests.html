@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Election Explorer — Test Suite</title>
+  <style>
+    :root { --bg: #0a0e1a; --surface: #141929; --pass: #22c55e; --fail: #ef4444; --text: #e2e8f0; --muted: #94a3b8; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 2rem; min-height: 100vh; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .summary { display: flex; gap: 1.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+    .stat-box { background: var(--surface); border-radius: 12px; padding: 1.2rem 2rem; text-align: center; border: 1px solid rgba(255,255,255,0.06); min-width: 120px; }
+    .stat-box .num { font-size: 2rem; font-weight: 800; }
+    .stat-box .label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .stat-box.pass .num { color: var(--pass); }
+    .stat-box.fail .num { color: var(--fail); }
+    .stat-box.total .num { color: #818cf8; }
+    .progress-bar { width: 100%; height: 8px; background: var(--surface); border-radius: 4px; margin-bottom: 2rem; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+    .category { margin-bottom: 1.5rem; }
+    .category-header { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .test-row { display: flex; align-items: center; gap: 0.8rem; padding: 0.4rem 0.8rem; font-size: 0.85rem; border-radius: 6px; }
+    .test-row:hover { background: rgba(255,255,255,0.03); }
+    .badge { padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .badge.pass { background: rgba(34,197,94,0.15); color: var(--pass); }
+    .badge.fail { background: rgba(239,68,68,0.15); color: var(--fail); }
+    .test-name { flex: 1; }
+    .hidden-app { position: absolute; left: -9999px; top: -9999px; width: 1024px; height: 768px; overflow: hidden; }
+    #timer { color: var(--muted); font-size: 0.85rem; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <h1>🧪 Election Explorer — Test Suite</h1>
+  <p class="subtitle">Automated tests for data integrity, security, DOM, rendering, accessibility, Google services &amp; performance</p>
+  <div id="timer">Running tests...</div>
+
+  <div class="summary" id="summary" style="display:none;">
+    <div class="stat-box total"><div class="num" id="totalCount">0</div><div class="label">Total</div></div>
+    <div class="stat-box pass"><div class="num" id="passCount">0</div><div class="label">Passed</div></div>
+    <div class="stat-box fail"><div class="num" id="failCount">0</div><div class="label">Failed</div></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+  <div id="resultsContainer"></div>
+
+  <!-- Hidden iframe to load the actual app for testing -->
+  <iframe id="appFrame" class="hidden-app" src="index.html"></iframe>
+
+  <script>
+    var frame = document.getElementById('appFrame');
+    frame.addEventListener('load', function () {
+      // Wait for the app to fully render
+      setTimeout(function () {
+        runTests();
+      }, 1500);
+    });
+
+    function runTests() {
+      var start = performance.now();
+      var frameDoc = frame.contentDocument || frame.contentWindow.document;
+      var frameWin = frame.contentWindow;
+
+      // Inject test script into iframe
+      var script = frameDoc.createElement('script');
+      script.src = 'tests.js';
+      script.onload = function () {
+        var results = frameWin.ElectionExplorerTests.run();
+        var elapsed = Math.round(performance.now() - start);
+        displayResults(results, elapsed);
+      };
+      frameDoc.body.appendChild(script);
+    }
+
+    function displayResults(results, elapsed) {
+      document.getElementById('timer').textContent = 'Completed in ' + elapsed + 'ms';
+      document.getElementById('summary').style.display = 'flex';
+      document.getElementById('totalCount').textContent = results.total;
+      document.getElementById('passCount').textContent = results.passed;
+      document.getElementById('failCount').textContent = results.failed;
+
+      var pct = results.total > 0 ? Math.round((results.passed / results.total) * 100) : 0;
+      var fill = document.getElementById('progressFill');
+      fill.style.width = pct + '%';
+      fill.style.background = pct === 100 ? 'var(--pass)' : pct >= 80 ? '#eab308' : 'var(--fail)';
+
+      // Group by category
+      var categories = {};
+      var currentCat = '';
+      results.details.forEach(function (d) {
+        var cat = guessCat(d.name);
+        if (!categories[cat]) categories[cat] = [];
+        categories[cat].push(d);
+      });
+
+      var container = document.getElementById('resultsContainer');
+      Object.keys(categories).forEach(function (cat) {
+        var div = document.createElement('div');
+        div.className = 'category';
+        var catPassed = categories[cat].filter(function(t){ return t.status === 'PASS'; }).length;
+        var header = document.createElement('div');
+        header.className = 'category-header';
+        header.textContent = cat + ' (' + catPassed + '/' + categories[cat].length + ')';
+        div.appendChild(header);
+
+        categories[cat].forEach(function (test) {
+          var row = document.createElement('div');
+          row.className = 'test-row';
+          var badge = document.createElement('span');
+          badge.className = 'badge ' + test.status.toLowerCase();
+          badge.textContent = test.status;
+          var name = document.createElement('span');
+          name.className = 'test-name';
+          name.textContent = test.name;
+          row.appendChild(badge);
+          row.appendChild(name);
+          div.appendChild(row);
+        });
+        container.appendChild(div);
+      });
+    }
+
+    function guessCat(name) {
+      if (name.indexOf('DATA') !== -1 || name.indexOf('COMPARE') !== -1 || name.indexOf('TYPES') !== -1 || name.indexOf('QUIZ_DATA') !== -1 || name.indexOf('steps') !== -1 || name.indexOf('timeline') !== -1 || name.indexOf('roles') !== -1 || name.indexOf('overview') !== -1) return '📦 Data Integrity';
+      if (name.indexOf('frozen') !== -1 || name.indexOf('mutation') !== -1 || name.indexOf('CSP') !== -1 || name.indexOf('innerHTML') !== -1 || name.indexOf('inline') !== -1 || name.indexOf('Referrer') !== -1) return '🔒 Security';
+      if (name.indexOf('#') !== -1 || name.indexOf('Element') !== -1 || name.indexOf('exists') !== -1 && name.indexOf('Data') === -1 && name.indexOf('frozen') === -1 && name.indexOf('Google') === -1 && name.indexOf('Firebase') === -1) return '🏗️ DOM Structure';
+      if (name.indexOf('rendered') !== -1 || name.indexOf('cards') !== -1 || name.indexOf('nodes') !== -1 || name.indexOf('rows') !== -1 || name.indexOf('options') !== -1 || name.indexOf('text') !== -1 && name.indexOf('aria') === -1) return '🎨 Rendering';
+      if (name.indexOf('aria') !== -1 || name.indexOf('lang') !== -1 || name.indexOf('alt') !== -1 || name.indexOf('accessible') !== -1 || name.indexOf('heading') !== -1 || name.indexOf('focusable') !== -1 || name.indexOf('Meta') !== -1 || name.indexOf('title') !== -1 && name.indexOf('step') === -1) return '♿ Accessibility';
+      if (name.indexOf('Google') !== -1 || name.indexOf('Firebase') !== -1 || name.indexOf('gtag') !== -1 || name.indexOf('JSON-LD') !== -1 || name.indexOf('Translate') !== -1 || name.indexOf('trackEvent') !== -1) return '☁️ Google Services';
+      if (name.indexOf('DOM') !== -1 && name.indexOf('loaded') !== -1 || name.indexOf('nodes') !== -1 && name.indexOf('2000') !== -1 || name.indexOf('Abort') !== -1 || name.indexOf('Scripts') !== -1) return '⚡ Performance';
+      return '📋 General';
+    }
+  </script>
+</body>
+</html>
