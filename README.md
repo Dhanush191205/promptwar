@@ -23,16 +23,22 @@
 
 ```
 Election Explorer
-├── index.html           # Main entry — semantic HTML5, CSP headers, structured data
+├── index.html           # Main entry — semantic HTML5, CSP headers, structured data, PWA
 ├── style.css            # Glassmorphism UI, dark theme, animations, responsive
 ├── data.js              # Immutable data layer (deep-frozen, JSDoc typed)
 ├── app.js               # Application logic (IIFE, safe DOM APIs, analytics)
-├── firebase-config.js   # Firebase + GA4 integration module
-├── tests.js             # Comprehensive test suite (80+ assertions)
+├── firebase-config.js   # Firebase + GA4 + Performance Monitoring integration
+├── sw.js                # Service Worker — offline caching (stale-while-revalidate)
+├── manifest.json        # PWA Web App Manifest
+├── tests.js             # Comprehensive test suite (278 assertions)
 ├── tests.html           # Professional test runner UI
 ├── Dockerfile           # Nginx Alpine container for Cloud Run
 ├── nginx.conf           # Nginx config with security headers & gzip
+├── cloudbuild.yaml      # Google Cloud Build CI/CD pipeline
 ├── app.yaml             # Google App Engine configuration
+├── jsconfig.json        # JS type checking and IDE support
+├── .editorconfig        # Consistent code style across editors
+├── LICENSE              # MIT License
 ├── .dockerignore        # Docker build exclusions
 └── .gcloudignore        # Cloud deployment exclusions
 ```
@@ -52,12 +58,15 @@ Election Explorer
 | Service | Usage |
 |---|---|
 | **Google Cloud Run** | Container hosting with auto-scaling |
+| **Google Cloud Build** | CI/CD pipeline — auto build, push, deploy on commit |
 | **Google Analytics 4** | Page views, section tracking, quiz events |
 | **Firebase Firestore** | Quiz score leaderboard storage |
 | **Firebase Analytics** | User engagement metrics |
+| **Firebase Performance** | Core Web Vitals & custom trace monitoring |
 | **Google Fonts** | Inter & Outfit typefaces |
 | **Google Translate** | Multi-language accessibility widget |
 | **Structured Data** | Schema.org JSON-LD for Google Search |
+| **PWA / Service Worker** | Offline-capable with stale-while-revalidate caching |
 
 ## 🧪 Testing
 
@@ -82,8 +91,14 @@ http://localhost:8080/tests.html
 ```bash
 gcloud run deploy election-explorer \
   --source . \
-  --region asia-south1 \
+  --region europe-west1 \
   --allow-unauthenticated
+```
+
+### Google Cloud Build (CI/CD)
+```bash
+# Submit build — auto builds, pushes, and deploys
+gcloud builds submit --config cloudbuild.yaml
 ```
 
 ### Google App Engine

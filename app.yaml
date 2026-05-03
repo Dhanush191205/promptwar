@@ -5,6 +5,23 @@ runtime: python312
 entrypoint: echo "Static site"
 
 handlers:
+  # PWA manifest
+  - url: /manifest.json
+    static_files: manifest.json
+    upload: manifest.json
+    mime_type: application/manifest+json
+    secure: always
+
+  # Service Worker (must be served from root with no cache)
+  - url: /sw.js
+    static_files: sw.js
+    upload: sw.js
+    mime_type: application/javascript
+    secure: always
+    http_headers:
+      Cache-Control: "no-cache"
+      Service-Worker-Allowed: "/"
+
   # CSS files
   - url: /style.css
     static_files: style.css

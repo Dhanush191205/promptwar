@@ -59,6 +59,11 @@ function initFirebase() {
       if (firebase.firestore) {
         db = firebase.firestore();
       }
+      // Firebase Performance Monitoring — tracks Core Web Vitals
+      if (firebase.performance) {
+        firebase.performance();
+        console.info('[Firebase] Performance Monitoring enabled');
+      }
       console.info('[Firebase] Initialized successfully');
     }
   } catch (err) {

@@ -1,0 +1,20 @@
+{
+  "name": "Election Explorer",
+  "short_name": "Elections",
+  "description": "Interactive visual guide to election processes in India, USA, and UK",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#6366f1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🗳️%3C/text%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["education", "government"],
+  "lang": "en",
+  "dir": "ltr"
+}

@@ -14,6 +14,8 @@ COPY style.css /usr/share/nginx/html/
 COPY app.js /usr/share/nginx/html/
 COPY data.js /usr/share/nginx/html/
 COPY firebase-config.js /usr/share/nginx/html/
+COPY sw.js /usr/share/nginx/html/
+COPY manifest.json /usr/share/nginx/html/
 COPY tests.js /usr/share/nginx/html/
 COPY tests.html /usr/share/nginx/html/
 
