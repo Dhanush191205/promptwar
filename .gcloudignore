@@ -1,0 +1,26 @@
+# Git related
+.git
+.gitignore
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node (if any)
+node_modules/
+
+# Docs / non-deployment files
+README.md
+LICENSE
+*.md
+
+# Python cache
+__pycache__/
+*.pyc

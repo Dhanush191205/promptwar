@@ -1,0 +1,55 @@
+runtime: python312
+
+# Required for deployment even with a static-only site.
+# Static file handlers below serve everything; no instance is used.
+entrypoint: echo "Static site"
+
+handlers:
+  # CSS files
+  - url: /style.css
+    static_files: style.css
+    upload: style.css
+    mime_type: text/css
+    secure: always
+    http_headers:
+      X-Content-Type-Options: nosniff
+      X-Frame-Options: DENY
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Cache-Control: "public, max-age=3600"
+
+  # JavaScript files
+  - url: /(.*\.js)$
+    static_files: \1
+    upload: .*\.js$
+    mime_type: application/javascript
+    secure: always
+    http_headers:
+      X-Content-Type-Options: nosniff
+      X-Frame-Options: DENY
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Cache-Control: "public, max-age=3600"
+
+  # Root — serve index.html
+  - url: /
+    static_files: index.html
+    upload: index.html
+    secure: always
+    http_headers:
+      X-Content-Type-Options: nosniff
+      X-Frame-Options: DENY
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"
+      Cache-Control: "public, max-age=600"
+
+  # Catch-all — serve index.html for any other path (including favicon.ico)
+  - url: /(.*)
+    static_files: index.html
+    upload: index.html
+    secure: always
+    http_headers:
+      X-Content-Type-Options: nosniff
+      X-Frame-Options: DENY
+      X-XSS-Protection: "1; mode=block"
+      Strict-Transport-Security: "max-age=31536000; includeSubDomains"

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Interactive Election Process Explorer — Learn how elections work step-by-step with visual flows, timelines, and quizzes." />
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; script-src 'self';" />
+  <title>Election Explorer — Interactive Election Process Guide</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🗳️%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Animated background particles -->
+  <div class="bg-particles" id="bgParticles"></div>
+
+  <!-- Navigation -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand">
+      <span class="nav-icon">🗳️</span>
+      <span class="nav-title">Election Explorer</span>
+    </div>
+    <div class="nav-links" id="navLinks">
+      <a href="#hero" class="nav-link active" data-section="hero">Home</a>
+      <a href="#overview" class="nav-link" data-section="overview">Overview</a>
+      <a href="#steps" class="nav-link" data-section="steps">Process</a>
+      <a href="#flow" class="nav-link" data-section="flow">Visual Flow</a>
+      <a href="#timeline" class="nav-link" data-section="timeline">Timeline</a>
+      <a href="#roles" class="nav-link" data-section="roles">Key Roles</a>
+      <a href="#compare" class="nav-link" data-section="compare">Compare</a>
+      <a href="#quiz" class="nav-link" data-section="quiz">Quiz</a>
+    </div>
+    <div class="nav-controls">
+      <select id="countrySelector" class="country-select" aria-label="Select Country">
+        <option value="india">🇮🇳 India</option>
+        <option value="usa">🇺🇸 USA</option>
+        <option value="uk">🇬🇧 UK</option>
+      </select>
+      <button class="hamburger" id="hamburger" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero" id="hero">
+    <div class="hero-content">
+      <div class="hero-badge">✨ Interactive Learning Experience</div>
+      <h1 class="hero-title">Understand <span class="gradient-text">Elections</span> Like Never Before</h1>
+      <p class="hero-subtitle">From registration to results — explore the complete election journey with visual flows, timelines, and interactive guides.</p>
+      <div class="hero-actions">
+        <a href="#steps" class="btn btn-primary" id="btnStartExploring">
+          <span>Start Exploring</span>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+        <a href="#quiz" class="btn btn-outline" id="btnTakeQuiz">
+          <span>Take Quiz</span>
+          <span>🧠</span>
+        </a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number" data-target="5">0</span>
+          <span class="stat-label">Key Stages</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number" data-target="3">0</span>
+          <span class="stat-label">Countries</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number" data-target="10">0</span>
+          <span class="stat-label">Quiz Questions</span>
+        </div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="floating-card fc-1">📋 Registration</div>
+      <div class="floating-card fc-2">📢 Campaigning</div>
+      <div class="floating-card fc-3">🗳️ Voting</div>
+      <div class="floating-card fc-4">📊 Counting</div>
+      <div class="floating-card fc-5">🏆 Results</div>
+    </div>
+  </section>
+
+  <!-- Overview Section -->
+  <section class="section" id="overview">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">📌 Overview</span>
+        <h2 class="section-title">What Are Elections?</h2>
+        <p class="section-subtitle">A democratic process where citizens choose their representatives through voting</p>
+      </div>
+      <div class="overview-grid">
+        <div class="overview-card" id="overviewCard1">
+          <div class="overview-icon">🏛️</div>
+          <h3>Democracy in Action</h3>
+          <p id="overviewText1">Elections are the heartbeat of democracy. Think of it like choosing the captain of your team — everyone gets a voice, and the majority decision wins.</p>
+        </div>
+        <div class="overview-card" id="overviewCard2">
+          <div class="overview-icon">🗳️</div>
+          <h3>Your Vote Matters</h3>
+          <p id="overviewText2">Every single vote counts. Elections ensure that power belongs to the people, and leaders are accountable to those who elected them.</p>
+        </div>
+        <div class="overview-card" id="overviewCard3">
+          <div class="overview-icon">⚖️</div>
+          <h3>Fair & Transparent</h3>
+          <p id="overviewText3">Independent bodies like the Election Commission ensure elections are conducted fairly, without bias or manipulation.</p>
+        </div>
+        <div class="overview-card" id="overviewCard4">
+          <div class="overview-icon">📅</div>
+          <h3>Regular Intervals</h3>
+          <p id="overviewText4">Elections happen at regular intervals — typically every 5 years in India — ensuring fresh mandates and democratic renewal.</p>
+        </div>
+      </div>
+      <div class="did-you-know" id="didYouKnow">
+        <span class="dyk-icon">💡</span>
+        <div>
+          <strong>Did you know?</strong>
+          <p id="dykText">India conducts the world's largest elections! In the 2024 General Elections, over 960 million voters were eligible to vote across 543 constituencies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Step-by-Step Process Section -->
+  <section class="section section-dark" id="steps">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">📝 Step-by-Step</span>
+        <h2 class="section-title">The Election Process</h2>
+        <p class="section-subtitle">Click each step to learn more about every stage of the journey</p>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+        <div class="progress-steps" id="progressSteps"></div>
+      </div>
+
+      <!-- Step Cards -->
+      <div class="step-navigator" id="stepNavigator">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Step Detail Panel -->
+      <div class="step-detail-panel" id="stepDetailPanel">
+        <div class="step-detail-header">
+          <span class="step-detail-icon" id="stepDetailIcon"></span>
+          <div>
+            <h3 class="step-detail-title" id="stepDetailTitle"></h3>
+            <span class="step-detail-badge" id="stepDetailBadge"></span>
+          </div>
+        </div>
+        <p class="step-detail-desc" id="stepDetailDesc"></p>
+        <div class="step-detail-points" id="stepDetailPoints"></div>
+        <div class="step-nav-buttons">
+          <button class="btn btn-sm btn-outline" id="btnPrevStep" aria-label="Previous step">← Previous</button>
+          <button class="btn btn-sm btn-primary" id="btnNextStep" aria-label="Next step">Next →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Visual Flow Section -->
+  <section class="section" id="flow">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">🔀 Visual Flow</span>
+        <h2 class="section-title">Election Flowchart</h2>
+        <p class="section-subtitle">See how each stage connects to form the complete election cycle</p>
+      </div>
+      <div class="flowchart" id="flowchart">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Timeline Section -->
+  <section class="section section-dark" id="timeline">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">⏳ Timeline</span>
+        <h2 class="section-title">Election Timeline</h2>
+        <p class="section-subtitle">Drag the slider to explore each phase of the election calendar</p>
+      </div>
+      <div class="timeline-wrapper">
+        <input type="range" min="0" max="4" value="0" class="timeline-slider" id="timelineSlider" aria-label="Timeline slider" />
+        <div class="timeline-labels" id="timelineLabels"></div>
+      </div>
+      <div class="timeline-card" id="timelineCard">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="timeline-visual" id="timelineVisual">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Roles Section -->
+  <section class="section" id="roles">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">👥 Key Roles</span>
+        <h2 class="section-title">Who Does What?</h2>
+        <p class="section-subtitle">Meet the people and institutions that make elections happen</p>
+      </div>
+      <div class="roles-grid" id="rolesGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Compare Section -->
+  <section class="section section-dark" id="compare">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">🌍 Compare</span>
+        <h2 class="section-title">Elections Around the World</h2>
+        <p class="section-subtitle">See how different countries run their elections</p>
+      </div>
+      <div class="compare-table-wrap">
+        <table class="compare-table" id="compareTable">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>🇮🇳 India</th>
+              <th>🇺🇸 USA</th>
+              <th>🇬🇧 UK</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Election Types -->
+      <div class="section-header" style="margin-top: 4rem;">
+        <span class="section-badge">🏷️ Types</span>
+        <h2 class="section-title">Types of Elections</h2>
+      </div>
+      <div class="types-grid" id="typesGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Quiz Section -->
+  <section class="section" id="quiz">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">🧠 Quiz</span>
+        <h2 class="section-title">Test Your Knowledge</h2>
+        <p class="section-subtitle">Let's see how much you've learned about the election process!</p>
+      </div>
+      <div class="quiz-container" id="quizContainer">
+        <div class="quiz-progress">
+          <span id="quizProgressText">Question 1 of 10</span>
+          <div class="quiz-progress-bar">
+            <div class="quiz-progress-fill" id="quizProgressFill"></div>
+          </div>
+        </div>
+        <div class="quiz-question" id="quizQuestion"></div>
+        <div class="quiz-options" id="quizOptions"></div>
+        <div class="quiz-feedback" id="quizFeedback"></div>
+        <div class="quiz-nav">
+          <button class="btn btn-primary" id="btnQuizNext" disabled>Next Question →</button>
+        </div>
+      </div>
+      <div class="quiz-result" id="quizResult" style="display:none;">
+        <div class="result-icon" id="resultIcon"></div>
+        <h3 id="resultTitle"></h3>
+        <p id="resultText"></p>
+        <div class="result-score" id="resultScore"></div>
+        <button class="btn btn-primary" id="btnRestartQuiz">Restart Quiz 🔄</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Summary Section -->
+  <section class="section section-dark" id="summary">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-badge">📋 Summary</span>
+        <h2 class="section-title">Quick Recap</h2>
+      </div>
+      <div class="summary-cards" id="summaryCards">
+        <div class="summary-card">
+          <span class="summary-num">1</span>
+          <h4>Register</h4>
+          <p>Eligible citizens enroll in the voter list</p>
+        </div>
+        <div class="summary-card">
+          <span class="summary-num">2</span>
+          <h4>Campaign</h4>
+          <p>Candidates present their vision to voters</p>
+        </div>
+        <div class="summary-card">
+          <span class="summary-num">3</span>
+          <h4>Vote</h4>
+          <p>Citizens cast their ballots on election day</p>
+        </div>
+        <div class="summary-card">
+          <span class="summary-num">4</span>
+          <h4>Count</h4>
+          <p>All votes are tallied transparently</p>
+        </div>
+        <div class="summary-card">
+          <span class="summary-num">5</span>
+          <h4>Results</h4>
+          <p>Winners are declared and take office</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-content">
+        <div class="footer-brand">
+          <span>🗳️</span>
+          <span>Election Explorer</span>
+        </div>
+        <p class="footer-text">An interactive learning tool to understand elections worldwide. Knowledge is the foundation of democracy.</p>
+        <p class="footer-copy">© 2026 Election Explorer. Built for educational purposes.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
